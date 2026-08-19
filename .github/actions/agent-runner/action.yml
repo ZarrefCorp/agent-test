@@ -124,6 +124,28 @@ runs:
         export PATH="${RUNNER_TEMP}/mavis-cli/node_modules/.bin:${PATH}"
         mmx --version || true
 
+    - name: Install OpenCode CLI
+      if: inputs.agent == 'opencode'
+      shell: bash
+      env:
+        # OpenCode picks up LLM provider credentials from these env
+        # vars (or ~/.config/opencode/config.json). At least one is
+        # required for non-trivial work; the user can also rely on
+        # the `opencode auth login` flow outside of CI.
+        ANTHROPIC_API_KEY: ${{ inputs.api_key }}
+        OPENAI_API_KEY: ${{ inputs.api_key }}
+        OPENROUTER_API_KEY: ${{ inputs.api_key }}
+      run: |
+        set -euo pipefail
+        # OpenCode (https://opencode.ai) is an open source AI coding
+        # agent. The npm package is `opencode-ai` and the binary is
+        # `opencode`. We install into RUNNER_TEMP and add it to PATH
+        # so the next step can find it without knowing the global
+        # npm prefix on each runner image.
+        npm install --prefix "${RUNNER_TEMP}/opencode-cli" opencode-ai || true
+        export PATH="${RUNNER_TEMP}/opencode-cli/node_modules/.bin:${PATH}"
+        opencode --version || true
+
     - name: Prepare prompt + working directory
       id: prep
       shell: bash
@@ -234,6 +256,42 @@ runs:
             set -e
             if [[ $rc -ne 0 ]]; then
               echo "::error::mmx (mavis) exited with ${rc}. Log:" >&2
+              cat "${RESULT_FILE}.log" >&2
+              exit $rc
+            fi
+            ;;
+          opencode)
+            # OpenCode (https://opencode.ai) is an open source AI
+            # coding agent. We invoke it in non-interactive mode
+            # (`opencode run <prompt>`) and rely on the agent itself
+            # to edit files, commit, and report back via a final
+            # assistant message. The Install OpenCode CLI step above
+            # installs the binary into ${RUNNER_TEMP}/opencode-cli,
+            # so we resolve its absolute path here (env: PATH overrides
+            # don't reliably propagate to bash scripts in some runner
+            # configurations).
+            if [[ -n "${AGENT_CLI:-}" ]]; then
+              cli="${AGENT_CLI}"
+            elif [[ -x "${RUNNER_TEMP}/opencode-cli/node_modules/.bin/opencode" ]]; then
+              cli="${RUNNER_TEMP}/opencode-cli/node_modules/.bin/opencode"
+            else
+              cli="opencode"
+            fi
+            # OpenCode reads the prompt as positional args, so we
+            # read the file into a here-string and pass it on the
+            # command line. We capture all output to a log file and
+            # expect a JSON-shaped result at ${RESULT_FILE} written
+            # by the agent itself (via AGENTS.md instructions).
+            set +e
+            "${cli}" run \
+              --non-interactive \
+              "$(cat "${PROMPT_FILE}")" \
+              ${EXTRA_ARGS} \
+              > "${RESULT_FILE}.log" 2>&1
+            rc=$?
+            set -e
+            if [[ $rc -ne 0 ]]; then
+              echo "::error::opencode exited with ${rc}. Log:" >&2
               cat "${RESULT_FILE}.log" >&2
               exit $rc
             fi
