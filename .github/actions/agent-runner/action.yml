@@ -262,8 +262,15 @@ runs:
             # so the prompt is supplied as an argument, not requested
             # from the user.
             set +e
+            # OpenCode accepts the prompt as positional args. Reading
+            # the file into a variable first lets us both pipe it on
+            # the command line AND emit it as a log line for debugging
+            # when the agent fails to receive it.
+            prompt_contents="$(cat "${PROMPT_FILE}" 2>/dev/null || true)"
+            echo "[DEBUG] opencode prompt length=${#prompt_contents}" >&2
+            echo "[DEBUG] opencode PROMPT_FILE=${PROMPT_FILE}" >&2
             "${cli}" run \
-              "$(cat "${PROMPT_FILE}")" \
+              ${prompt_contents:+"${prompt_contents}"} \
               ${EXTRA_ARGS} \
               > "${RESULT_FILE}.log" 2>&1
             rc=$?
