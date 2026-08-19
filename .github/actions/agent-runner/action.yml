@@ -212,9 +212,17 @@ runs:
             # Mavis / MiniMax Code: thin wrapper. The npm package is
             # `mmx-cli` and the binary is `mmx`. We resolve the binary
             # name explicitly so callers can pass `agent: mavis` without
-            # needing to also override `agent_cli`. See the Install Mavis
-            # CLI step above for the install command.
-            cli="${AGENT_CLI:-mmx}"
+            # needing to also override `agent_cli`. The Install Mavis CLI
+            # step above installs into ${RUNNER_TEMP}/mavis-cli, so the
+            # binary lives at that path (PATH overrides in env: don't
+            # reliably propagate to bash scripts in some runner configs).
+            if [[ -n "${AGENT_CLI:-}" ]]; then
+              cli="${AGENT_CLI}"
+            elif [[ -x "${RUNNER_TEMP}/mavis-cli/node_modules/.bin/mmx" ]]; then
+              cli="${RUNNER_TEMP}/mavis-cli/node_modules/.bin/mmx"
+            else
+              cli="mmx"
+            fi
             set +e
             "${cli}" run \
               --non-interactive \
