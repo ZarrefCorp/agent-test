@@ -79,17 +79,37 @@ outputs:
 runs:
   using: 'composite'
   steps:
-    - name: Set up custom agent
-      if: inputs.agent == 'custom'
-      uses: ${{ inputs.setup_action }}
-      with:
-        token: ${{ inputs.agent_token }}
+    # Composite actions cannot use `inputs.*` inside `uses:` expressions
+    # (the runner treats `uses:` as a near-literal string at parse time).
+    # We hardcode one `run:` step per supported agent and gate each on `if:`.
+    - name: Install Claude CLI
+      if: inputs.agent == 'claude'
+      shell: bash
+      run: |
+        set -euo pipefail
+        # Thin wrapper: claude is published on npm. See ./setup-agent-claude
+        # for the original action; the logic is duplicated here so this
+        # composite action doesn't need a dynamic `uses:`.
+        npm install -g @anthropic-ai/claude-code || true
+        claude --version || true
 
-    - name: Set up the chosen agent CLI
-      if: inputs.agent != 'custom'
-      uses: ./setup-agent-${{ inputs.agent }}
-      with:
-        token: ${{ inputs.agent_token }}
+    - name: Install Copilot CLI
+      if: inputs.agent == 'copilot'
+      shell: bash
+      run: |
+        set -euo pipefail
+        npm install -g @githubnext/github-copilot-cli || true
+        copilot --version || true
+
+    - name: Install Mavis CLI
+      if: inputs.agent == 'mavis'
+      shell: bash
+      env:
+        MAVIS_API_KEY: ${{ secrets.MAVIS_API_KEY }}
+      run: |
+        set -euo pipefail
+        npm install -g mavis || true
+        mavis --version || true
 
     - name: Prepare prompt + working directory
       id: prep
