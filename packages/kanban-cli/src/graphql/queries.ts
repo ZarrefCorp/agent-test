@@ -68,7 +68,7 @@ export const FIND_ORG_PROJECT = /* GraphQL */ `
 `;
 
 export const GET_ISSUE_CARD = /* GraphQL */ `
-  query GetIssueCard($issueNodeId: ID!, $projectId: ID) {
+  query GetIssueCard($issueNodeId: ID!) {
     node(id: $issueNodeId) {
       ... on Issue {
         id
