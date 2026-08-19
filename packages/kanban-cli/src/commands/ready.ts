@@ -1,26 +1,8 @@
 import { GitHubClient, requireToken } from '../graphql/client.js';
-import { FIND_PROJECT, LIST_ITEMS_IN_STATUS } from '../graphql/queries.js';
+import { LIST_ITEMS_IN_STATUS } from '../graphql/queries.js';
+import { findProjectByOwner } from '../graphql/find-project.js';
 import { emitJSON, emitTable, pickFormat } from '../output.js';
 import type { ParsedArgs } from '../cli.js';
-
-interface FindProjectData {
-  user: { projectsV2: { nodes: ProjectNode[] } } | null;
-  organization: { projectsV2: { nodes: ProjectNode[] } } | null;
-}
-
-interface ProjectNode {
-  id: string;
-  number: number;
-  title: string;
-  fields: { nodes: ProjectFieldNode[] };
-}
-
-interface ProjectFieldNode {
-  __typename: string;
-  id: string;
-  name: string;
-  options?: { id: string; name: string }[];
-}
 
 interface ListItemsData {
   node: {
@@ -56,11 +38,10 @@ export async function handleReady(rest: string[], flags: ParsedArgs['flags']): P
   const client = new GitHubClient({ token: requireToken() });
 
   // 1. Find project + field + target option.
-  const projData = await client.graphql<FindProjectData>(FIND_PROJECT, { login: owner, title: project });
-  const allProjects = [
-    ...(projData.user?.projectsV2.nodes ?? []),
-    ...(projData.organization?.projectsV2.nodes ?? []),
-  ];
+  // `findProjectByOwner` queries user and organization in parallel
+  // because the GitHub GraphQL API is fail-fast on user/organization
+  // type mismatches — see find-project.ts.
+  const allProjects = await findProjectByOwner(client, owner, project);
   const matched = allProjects.find(
     (p) => p.title.toLowerCase() === project.toLowerCase() || p.title.toLowerCase().includes(project.toLowerCase())
   );
@@ -72,7 +53,8 @@ export async function handleReady(rest: string[], flags: ParsedArgs['flags']): P
     );
   }
   const statusField = matched.fields.nodes.find(
-    (f) => f.__typename === 'ProjectV2SingleSelectField' && f.name.toLowerCase() === fieldName.toLowerCase()
+    (f): f is typeof f & { __typename: 'ProjectV2SingleSelectField' } =>
+      f.__typename === 'ProjectV2SingleSelectField' && f.name.toLowerCase() === fieldName.toLowerCase()
   );
   if (!statusField) {
     throw new Error(`ready: project "${matched.title}" has no single-select field "${fieldName}"`);

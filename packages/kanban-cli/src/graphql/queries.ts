@@ -6,59 +6,61 @@
  *   - Single-select options are matched by name (case-insensitive).
  *   - When an issue lives on multiple projects, we pick the project
  *     that matches `projectTitle` (case-insensitive substring).
+ *
+ * Note: We split the "find project by owner" query into two —
+ * one for `user`, one for `organization`. The GitHub GraphQL API is
+ * fail-fast: a query like `{ user(login: "OrgName") { ... } }` returns
+ * an error (not null) when the login is an Organization, and that error
+ * propagates to the whole response, so a single combined query would
+ * also fail when the caller passes an org login. Use the
+ * `findProjectByOwner` helper (in `./find-project.ts`) to query both
+ * in parallel and merge results safely.
  */
 
-export const FIND_PROJECT = /* GraphQL */ `
-  query FindProject($login: String!, $title: String!) {
+const PROJECT_FIELDS = /* GraphQL */ `
+  fields(first: 50) {
+    nodes {
+      __typename
+      ... on ProjectV2SingleSelectField {
+        id
+        name
+        options {
+          id
+          name
+        }
+      }
+      ... on ProjectV2Field {
+        id
+        name
+      }
+    }
+  }
+`;
+
+export const FIND_USER_PROJECT = /* GraphQL */ `
+  query FindUserProject($login: String!, $title: String!) {
     user(login: $login) {
       projectsV2(first: 20, query: $title) {
         nodes {
           id
           number
           title
-          fields(first: 50) {
-            nodes {
-              __typename
-              ... on ProjectV2SingleSelectField {
-                id
-                name
-                options {
-                  id
-                  name
-                }
-              }
-              ... on ProjectV2Field {
-                id
-                name
-              }
-            }
-          }
+          ${PROJECT_FIELDS}
         }
       }
     }
+  }
+`;
+
+export const FIND_ORG_PROJECT = /* GraphQL */ `
+  query FindOrgProject($login: String!, $title: String!) {
     organization(login: $login) {
       projectsV2(first: 20, query: $title) {
         nodes {
           id
           number
           title
-          fields(first: 50) {
-            nodes {
-              __typename
-              ... on ProjectV2SingleSelectField {
-                id
-                name
-                options {
-                  id
-                  name
-                }
-              }
-              ... on ProjectV2Field {
-                id
-                name
-              }
-            }
-          }
+          ${PROJECT_FIELDS}
         }
       }
     }
@@ -106,18 +108,15 @@ export const GET_ISSUE_CARD = /* GraphQL */ `
 `;
 
 export const UPDATE_ITEM_STATUS = /* GraphQL */ `
-  mutation UpdateItemStatus(
-    $projectId: ID!
-    $itemId: ID!
-    $fieldId: ID!
-    $optionId: String!
-  ) {
-    updateProjectV2ItemFieldValue(input: {
-      projectId: $projectId
-      itemId: $itemId
-      fieldId: $fieldId
-      value: { singleSelectOptionId: $optionId }
-    }) {
+  mutation UpdateItemStatus($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
+    updateProjectV2ItemFieldValue(
+      input: {
+        projectId: $projectId
+        itemId: $itemId
+        fieldId: $fieldId
+        value: { singleSelectOptionId: $optionId }
+      }
+    ) {
       projectV2Item { id }
     }
   }

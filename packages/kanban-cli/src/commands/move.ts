@@ -1,27 +1,9 @@
 import { GitHubClient, requireToken } from '../graphql/client.js';
-import { FIND_PROJECT, GET_ISSUE_CARD, UPDATE_ITEM_STATUS } from '../graphql/queries.js';
+import { GET_ISSUE_CARD, UPDATE_ITEM_STATUS } from '../graphql/queries.js';
+import { findProjectByOwner, type ProjectNode } from '../graphql/find-project.js';
 import { emitJSON, emitKV, pickFormat } from '../output.js';
 import { handleComment } from './comment.js';
 import type { ParsedArgs } from '../cli.js';
-
-interface FindProjectData {
-  user: { projectsV2: { nodes: ProjectNode[] } } | null;
-  organization: { projectsV2: { nodes: ProjectNode[] } } | null;
-}
-
-interface ProjectNode {
-  id: string;
-  number: number;
-  title: string;
-  fields: { nodes: ProjectFieldNode[] };
-}
-
-interface ProjectFieldNode {
-  __typename: string;
-  id: string;
-  name: string;
-  options?: { id: string; name: string }[];
-}
 
 interface ProjectItemNode {
   id: string;
@@ -55,11 +37,11 @@ export async function handleMove(rest: string[], flags: ParsedArgs['flags']): Pr
   const client = new GitHubClient({ token: requireToken() });
 
   // 1. Find project + status field + target option.
-  const projData = await client.graphql<FindProjectData>(FIND_PROJECT, { login: owner, title: project });
-  const allProjects = [
-    ...(projData.user?.projectsV2.nodes ?? []),
-    ...(projData.organization?.projectsV2.nodes ?? []),
-  ];
+  // `findProjectByOwner` queries user and organization in parallel
+  // because the GitHub GraphQL API is fail-fast: passing an org login
+  // to `user(login:)` errors the whole response, so we can't combine
+  // them in one query.
+  const allProjects = await findProjectByOwner(client, owner, project);
   const matched = allProjects.find(
     (p) => p.title.toLowerCase() === project.toLowerCase() || p.title.toLowerCase().includes(project.toLowerCase())
   );
@@ -71,7 +53,8 @@ export async function handleMove(rest: string[], flags: ParsedArgs['flags']): Pr
     );
   }
   const statusField = matched.fields.nodes.find(
-    (f) => f.__typename === 'ProjectV2SingleSelectField' && f.name.toLowerCase() === fieldName.toLowerCase()
+    (f): f is ProjectNode['fields']['nodes'][number] & { __typename: 'ProjectV2SingleSelectField' } =>
+      f.__typename === 'ProjectV2SingleSelectField' && f.name.toLowerCase() === fieldName.toLowerCase()
   );
   if (!statusField) {
     throw new Error(

@@ -1,19 +1,8 @@
 import { GitHubClient, requireToken } from '../graphql/client.js';
-import { FIND_PROJECT, GET_ISSUE_CARD } from '../graphql/queries.js';
+import { GET_ISSUE_CARD } from '../graphql/queries.js';
+import { findProjectByOwner, type ProjectNode } from '../graphql/find-project.js';
 import { emitJSON, emitKV, pickFormat } from '../output.js';
 import type { ParsedArgs } from '../cli.js';
-
-interface FindProjectData {
-  user: { projectsV2: { nodes: ProjectNode[] } } | null;
-  organization: { projectsV2: { nodes: ProjectNode[] } } | null;
-}
-
-interface ProjectNode {
-  id: string;
-  number: number;
-  title: string;
-  fields: { nodes: ProjectFieldNode[] };
-}
 
 interface ProjectFieldNode {
   __typename: string;
@@ -104,14 +93,10 @@ export async function handleGetCard(rest: string[], flags: ParsedArgs['flags']):
   const issueNodeId = await resolveIssueNodeId(client, owner, issue);
 
   // 2. Find the project by title.
-  const projectData = await client.graphql<FindProjectData>(FIND_PROJECT, {
-    login: owner,
-    title: project,
-  });
-  const allProjects = [
-    ...(projectData.user?.projectsV2.nodes ?? []),
-    ...(projectData.organization?.projectsV2.nodes ?? []),
-  ];
+  // `findProjectByOwner` queries user and organization in parallel
+  // because the GitHub GraphQL API is fail-fast on user/organization
+  // type mismatches — see find-project.ts.
+  const allProjects = await findProjectByOwner(client, owner, project);
   const matched = allProjects.find((p) => projectMatches(p, project));
   if (!matched) {
     if (require) {
