@@ -114,8 +114,12 @@ runs:
         MAVIS_API_KEY: ${{ inputs.api_key }}
       run: |
         set -euo pipefail
-        npm install -g mavis || true
-        mavis --version || true
+        # The MiniMax Code (Mavis) CLI is published on npm as `mmx-cli`
+        # and installs a `mcode` binary. See
+        # https://github.com/MiniMax-AI/cli and the official install
+        # guide at https://agent.minimax.io/docs/cli/quick-start.
+        npm install -g mmx-cli || true
+        mcode --version || true
 
     - name: Prepare prompt + working directory
       id: prep
@@ -200,8 +204,12 @@ runs:
               '{pr_url: "", summary: $summary, files_changed: []}' > "${RESULT_FILE}"
             ;;
           mavis|*)
-            # Mavis / MiniMax Code: thin wrapper. We assume `mavis run` is
-            # available; see ./setup-agent-mavis for installation.
+            # Mavis / MiniMax Code: thin wrapper. The npm package is
+            # `mmx-cli` and the binary is `mcode`. We resolve the binary
+            # name explicitly so callers can pass `agent: mavis` without
+            # needing to also override `agent_cli`. See the Install Mavis
+            # CLI step above for the install command.
+            cli="${AGENT_CLI:-mcode}"
             set +e
             "${cli}" run \
               --non-interactive \
@@ -212,7 +220,7 @@ runs:
             rc=$?
             set -e
             if [[ $rc -ne 0 ]]; then
-              echo "::error::mavis exited with ${rc}. Log:" >&2
+              echo "::error::mcode (mavis) exited with ${rc}. Log:" >&2
               cat "${RESULT_FILE}.log" >&2
               exit $rc
             fi
