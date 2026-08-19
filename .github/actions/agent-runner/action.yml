@@ -248,13 +248,16 @@ runs:
               cli="opencode"
             fi
             # OpenCode reads the prompt as positional args, so we
-            # read the file into a here-string and pass it on the
-            # command line. We capture all output to a log file and
-            # expect a JSON-shaped result at ${RESULT_FILE} written
-            # by the agent itself (via AGENTS.md instructions).
+            # read the file and pass it on the command line. We
+            # capture all output to a log file and expect a JSON-
+            # shaped result at ${RESULT_FILE} written by the agent
+            # itself (via AGENTS.md instructions). The `-i` flag
+            # would force an interactive TUI which we don't want, so
+            # we rely on the default (non-interactive) and pipe stdin
+            # so the prompt is supplied as an argument, not requested
+            # from the user.
             set +e
             "${cli}" run \
-              --non-interactive \
               "$(cat "${PROMPT_FILE}")" \
               ${EXTRA_ARGS} \
               > "${RESULT_FILE}.log" 2>&1
