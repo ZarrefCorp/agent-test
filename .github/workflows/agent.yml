@@ -1,0 +1,42 @@
+# Consumer workflow for the AI agent boilerplate.
+#
+# This file lives in the consumer repo (ZarrefCorp/agent-test) and
+# invokes the reusable workflow from LucasBFerraz/agent-boilerplate.
+# The reusable workflow reads the issue, prepares the branch, runs
+# the chosen agent (Mavis / MiniMax Code here), and opens a PR.
+#
+# To enable:
+#   1. Set repo secrets: MAVIS_API_KEY and AGENT_GH_TOKEN
+#   2. Add the `agent:ready` label to this repo
+#   3. Have a Project v2 board named "Engineering Backlog" with
+#      Status options: Backlog, Ready, In Progress, In Review, Done
+#   4. Open an issue, add it to the project, apply `agent:ready`
+
+name: AI agent (Mavis)
+
+on:
+  issues:
+    types: [labeled]
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+  id-token: write
+
+jobs:
+  on-card:
+    uses: LucasBFerraz/agent-boilerplate/.github/workflows/agent-on-card.yml@master
+    with:
+      agent: mavis
+      project_title: 'Engineering Backlog'
+      agent_trigger_label: 'agent:ready'
+      # status_field_name: 'Status'
+      # in_progress_status: 'In Progress'
+      # in_review_status: 'In Review'
+      # base_ref: 'main'
+      # timeout_minutes: 20
+      # agent_extra_args: '--model mavis-3'
+    secrets:
+      agent_gh_token: ${{ secrets.AGENT_GH_TOKEN }}
+      agent_api_key: ${{ secrets.MAVIS_API_KEY }}
