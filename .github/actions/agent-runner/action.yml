@@ -199,8 +199,12 @@ runs:
         AGENT_TOKEN: ${{ inputs.agent_token }}
         GH_TOKEN: ${{ inputs.agent_token }}
         GH_REPO: ${{ github.repository }}
-        # Make the `mcode` binary (installed by the previous step) discoverable.
-        PATH: ${RUNNER_TEMP}/mavis-cli/node_modules/.bin:${PATH}
+        # NOTE: we deliberately do NOT set `PATH` here. The `PATH`
+        # env var is protected by GitHub Actions — assigning to it in
+        # step env: clobbers the inherited PATH (the `${PATH}`
+        # interpolation evaluates to empty), so system utilities like
+        # `cat` become unavailable. The agent binaries are resolved
+        # by absolute path inside the case branches below.
       run: |
         set -euo pipefail
         workdir="${WORKDIR:-${GITHUB_WORKSPACE}}"
