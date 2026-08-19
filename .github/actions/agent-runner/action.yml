@@ -47,18 +47,18 @@ inputs:
     default: '20'
   working_directory:
     description: >-
-      Run the agent from this directory. Default: ${{ github.workspace }}.
+      Run the agent from this directory. Default: GITHUB_WORKSPACE.
     required: false
     default: ''
   agent_token:
     description: >-
       Token the agent should use for git push. Default: GITHUB_TOKEN.
     required: false
-    default: ${{ github.token }}
+    default: ''
   result_file:
     description: >-
       File the agent should write its final JSON result to. Default:
-      ${{ github.workspace }}/agent-result.json.
+      GITHUB_WORKSPACE/agent-result.json.
     required: false
     default: ''
 
