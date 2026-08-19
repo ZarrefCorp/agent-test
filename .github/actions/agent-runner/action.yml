@@ -79,8 +79,15 @@ outputs:
 runs:
   using: 'composite'
   steps:
+    - name: Set up custom agent
+      if: inputs.agent == 'custom'
+      uses: ${{ inputs.setup_action }}
+      with:
+        token: ${{ inputs.agent_token }}
+
     - name: Set up the chosen agent CLI
-      uses: ${{ inputs.agent == 'custom' && inputs.setup_action || format('./setup-agent-{0}', inputs.agent) }}
+      if: inputs.agent != 'custom'
+      uses: ./setup-agent-${{ inputs.agent }}
       with:
         token: ${{ inputs.agent_token }}
 
