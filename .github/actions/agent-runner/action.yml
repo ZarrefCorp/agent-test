@@ -230,36 +230,6 @@ runs:
             jq -n --arg summary "$(cat "${RESULT_FILE}.log")" \
               '{pr_url: "", summary: $summary, files_changed: []}' > "${RESULT_FILE}"
             ;;
-          mavis|*)
-            # Mavis / MiniMax Code: thin wrapper. The npm package is
-            # `mmx-cli` and the binary is `mmx`. We resolve the binary
-            # name explicitly so callers can pass `agent: mavis` without
-            # needing to also override `agent_cli`. The Install Mavis CLI
-            # step above installs into ${RUNNER_TEMP}/mavis-cli, so the
-            # binary lives at that path (PATH overrides in env: don't
-            # reliably propagate to bash scripts in some runner configs).
-            if [[ -n "${AGENT_CLI:-}" ]]; then
-              cli="${AGENT_CLI}"
-            elif [[ -x "${RUNNER_TEMP}/mavis-cli/node_modules/.bin/mmx" ]]; then
-              cli="${RUNNER_TEMP}/mavis-cli/node_modules/.bin/mmx"
-            else
-              cli="mmx"
-            fi
-            set +e
-            "${cli}" run \
-              --non-interactive \
-              --prompt-file "${PROMPT_FILE}" \
-              --result-file "${RESULT_FILE}" \
-              ${EXTRA_ARGS} \
-              > "${RESULT_FILE}.log" 2>&1
-            rc=$?
-            set -e
-            if [[ $rc -ne 0 ]]; then
-              echo "::error::mmx (mavis) exited with ${rc}. Log:" >&2
-              cat "${RESULT_FILE}.log" >&2
-              exit $rc
-            fi
-            ;;
           opencode)
             # OpenCode (https://opencode.ai) is an open source AI
             # coding agent. We invoke it in non-interactive mode
@@ -292,6 +262,36 @@ runs:
             set -e
             if [[ $rc -ne 0 ]]; then
               echo "::error::opencode exited with ${rc}. Log:" >&2
+              cat "${RESULT_FILE}.log" >&2
+              exit $rc
+            fi
+            ;;
+          mavis|*)
+            # Mavis / MiniMax Code: thin wrapper. The npm package is
+            # `mmx-cli` and the binary is `mmx`. We resolve the binary
+            # name explicitly so callers can pass `agent: mavis` without
+            # needing to also override `agent_cli`. The Install Mavis CLI
+            # step above installs into ${RUNNER_TEMP}/mavis-cli, so the
+            # binary lives at that path (PATH overrides in env: don't
+            # reliably propagate to bash scripts in some runner configs).
+            if [[ -n "${AGENT_CLI:-}" ]]; then
+              cli="${AGENT_CLI}"
+            elif [[ -x "${RUNNER_TEMP}/mavis-cli/node_modules/.bin/mmx" ]]; then
+              cli="${RUNNER_TEMP}/mavis-cli/node_modules/.bin/mmx"
+            else
+              cli="mmx"
+            fi
+            set +e
+            "${cli}" run \
+              --non-interactive \
+              --prompt-file "${PROMPT_FILE}" \
+              --result-file "${RESULT_FILE}" \
+              ${EXTRA_ARGS} \
+              > "${RESULT_FILE}.log" 2>&1
+            rc=$?
+            set -e
+            if [[ $rc -ne 0 ]]; then
+              echo "::error::mmx (mavis) exited with ${rc}. Log:" >&2
               cat "${RESULT_FILE}.log" >&2
               exit $rc
             fi
