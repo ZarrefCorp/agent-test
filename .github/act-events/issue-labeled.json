@@ -13,8 +13,8 @@
     "name": "agent:ready"
   },
   "repository": {
-    "name": "agent-boilerplate",
-    "owner": { "login": "local-act-test" }
+    "name": "agent-test",
+    "owner": { "login": "ZarrefCorp" }
   },
   "sender": { "login": "local-act-test" }
 }

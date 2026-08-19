@@ -16,10 +16,12 @@
     "act:dry": "act -n -W .github/workflows/agent-scheduled-triage.yml workflow_dispatch",
     "act:dry:card": "act -n -W .github/workflows/agent-on-card.yml issues -e .github/act-events/issue-labeled.json",
     "act:dry:discussion": "act -n -W .github/workflows/agent-discussion.yml issue_comment -e .github/act-events/issue-comment.json",
-    "act:dry:all": "npm run act:dry && npm run act:dry:card && npm run act:dry:discussion",
+    "act:dry:all": "npm run act:dry && npm run act:dry:card && npm run act:dry:discussion && npm run act:dry:mavis",
+    "act:dry:mavis": "act -n -W .github/workflows/agent.yml issues -e .github/act-events/issue-labeled.json",
     "act:smoke": "act -W .github/workflows/agent-scheduled-triage.yml workflow_dispatch",
     "act:smoke:card": "act -W .github/workflows/agent-on-card.yml issues -e .github/act-events/issue-labeled.json",
-    "act:smoke:discussion": "act -W .github/workflows/agent-discussion.yml issue_comment -e .github/act-events/issue-comment.json"
+    "act:smoke:discussion": "act -W .github/workflows/agent-discussion.yml issue_comment -e .github/act-events/issue-comment.json",
+    "act:smoke:mavis": "act -W .github/workflows/agent.yml issues -e .github/act-events/issue-labeled.json"
   },
   "engines": {
     "node": ">=20.0.0"

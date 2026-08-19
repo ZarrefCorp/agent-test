@@ -7,7 +7,7 @@
 #
 # To enable:
 #   1. Set repo secrets: MAVIS_API_KEY and AGENT_GH_TOKEN
-#   2. Add the `agent:ready` label to this repo
+#   2. Add the `agent:ready` label to this issue
 #   3. Have a Project v2 board named "Engineering Backlog" with
 #      Status options: Backlog, Ready, In Progress, In Review, Done
 #   4. Open an issue, add it to the project, apply `agent:ready`
@@ -28,7 +28,7 @@ jobs:
   on-card:
     uses: LucasBFerraz/agent-boilerplate/.github/workflows/agent-on-card.yml@master
     with:
-      agent: opencode
+      agent: mavis
       project_title: 'Engineering Backlog'
       agent_trigger_label: 'agent:ready'
       # status_field_name: 'Status'
