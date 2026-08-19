@@ -115,10 +115,13 @@ runs:
       run: |
         set -euo pipefail
         # The MiniMax Code (Mavis) CLI is published on npm as `mmx-cli`
-        # and installs a `mcode` binary. See
-        # https://github.com/MiniMax-AI/cli and the official install
+        # and installs a `mcode` binary. We use `npx` (rather than a
+        # global install) so the binary is on PATH for the next step
+        # without us needing to know the npm prefix on each runner.
+        # See https://github.com/MiniMax-AI/cli and the official install
         # guide at https://agent.minimax.io/docs/cli/quick-start.
-        npm install -g mmx-cli || true
+        npm install --prefix "${RUNNER_TEMP}/mavis-cli" mmx-cli || true
+        export PATH="${RUNNER_TEMP}/mavis-cli/node_modules/.bin:${PATH}"
         mcode --version || true
 
     - name: Prepare prompt + working directory
@@ -162,6 +165,8 @@ runs:
         AGENT_TOKEN: ${{ inputs.agent_token }}
         GH_TOKEN: ${{ inputs.agent_token }}
         GH_REPO: ${{ github.repository }}
+        # Make the `mcode` binary (installed by the previous step) discoverable.
+        PATH: ${RUNNER_TEMP}/mavis-cli/node_modules/.bin:${PATH}
       run: |
         set -euo pipefail
         workdir="${WORKDIR:-${GITHUB_WORKSPACE}}"
