@@ -279,8 +279,27 @@ runs:
               > "${RESULT_FILE}.log" 2>&1
             rc=$?
             set -e
-            if [[ $rc -ne 0 ]]; then
-              echo "::error::opencode exited with ${rc}. Log:" >&2
+            # OpenCode doesn't currently honor AGENTS.md's "write a JSON
+            # result file" contract; it just prints to the TUI / log and
+            # creates a PR via `gh`. We salvage the run by scraping the
+            # PR URL out of the log and synthesizing the JSON contract
+            # that the rest of this action expects. Only treat the run
+            # as a failure if we couldn't find a PR URL.
+            pr_url="$(grep -oE 'https://github\.com/[^[:space:]]+/pull/[0-9]+' "${RESULT_FILE}.log" | head -n1 || true)"
+            if [[ -n "${pr_url}" ]]; then
+              echo "::notice::opencode did not write ${RESULT_FILE}; recovered pr_url=${pr_url} from log (rc=${rc})"
+              files_changed_count="$(grep -cE '^(diff --git|create mode|delete mode|new file)' "${RESULT_FILE}.log" || true)"
+              if [[ -z "${files_changed_count}" ]]; then
+                files_changed_count=0
+              fi
+              jq -n \
+                --arg pr_url "${pr_url}" \
+                --arg summary "opencode run recovered from log (rc=${rc})" \
+                --argjson files_changed "[]" \
+                '{pr_url: $pr_url, summary: $summary, files_changed: $files_changed}' \
+                > "${RESULT_FILE}"
+            else
+              echo "::error::opencode exited with ${rc} and no PR URL was found in the log:" >&2
               cat "${RESULT_FILE}.log" >&2
               exit $rc
             fi
