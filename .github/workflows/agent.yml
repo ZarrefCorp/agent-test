@@ -28,7 +28,7 @@ jobs:
   on-card:
     uses: LucasBFerraz/agent-boilerplate/.github/workflows/agent-on-card.yml@master
     with:
-      agent: mavis
+      agent: opencode
       project_title: 'Engineering Backlog'
       agent_trigger_label: 'agent:ready'
       # status_field_name: 'Status'
