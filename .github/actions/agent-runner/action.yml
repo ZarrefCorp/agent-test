@@ -180,8 +180,13 @@ runs:
       env:
         AGENT: ${{ inputs.agent }}
         AGENT_CLI: ${{ inputs.agent_cli }}
-        PROMPT_FILE: ${{ steps.prep.outputs.prompt_file }}
-        RESULT_FILE: ${{ steps.prep.outputs.result_file }}
+        # PROMPT_FILE / RESULT_FILE paths are computed from GITHUB_WORKSPACE
+        # rather than reading `steps.prep.outputs.*` because the prep step
+        # writes to GITHUB_OUTPUT but composite action step outputs are
+        # not reliably propagated to later steps' env: blocks when
+        # the value contains a path interpolation.
+        PROMPT_FILE: ${{ github.workspace }}/.agent-prompt.md
+        RESULT_FILE: ${{ github.workspace }}/agent-result.json
         EXTRA_ARGS: ${{ inputs.extra_args }}
         WORKDIR: ${{ inputs.working_directory }}
         AGENT_TOKEN: ${{ inputs.agent_token }}
