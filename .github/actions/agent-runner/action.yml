@@ -115,14 +115,14 @@ runs:
       run: |
         set -euo pipefail
         # The MiniMax Code (Mavis) CLI is published on npm as `mmx-cli`
-        # and installs a `mcode` binary. We use `npx` (rather than a
-        # global install) so the binary is on PATH for the next step
-        # without us needing to know the npm prefix on each runner.
+        # and installs an `mmx` binary. We install into RUNNER_TEMP and
+        # add it to PATH so the next step can find it without needing
+        # to know the global npm prefix on each runner image.
         # See https://github.com/MiniMax-AI/cli and the official install
         # guide at https://agent.minimax.io/docs/cli/quick-start.
         npm install --prefix "${RUNNER_TEMP}/mavis-cli" mmx-cli || true
         export PATH="${RUNNER_TEMP}/mavis-cli/node_modules/.bin:${PATH}"
-        mcode --version || true
+        mmx --version || true
 
     - name: Prepare prompt + working directory
       id: prep
@@ -210,11 +210,11 @@ runs:
             ;;
           mavis|*)
             # Mavis / MiniMax Code: thin wrapper. The npm package is
-            # `mmx-cli` and the binary is `mcode`. We resolve the binary
+            # `mmx-cli` and the binary is `mmx`. We resolve the binary
             # name explicitly so callers can pass `agent: mavis` without
             # needing to also override `agent_cli`. See the Install Mavis
             # CLI step above for the install command.
-            cli="${AGENT_CLI:-mcode}"
+            cli="${AGENT_CLI:-mmx}"
             set +e
             "${cli}" run \
               --non-interactive \
@@ -225,7 +225,7 @@ runs:
             rc=$?
             set -e
             if [[ $rc -ne 0 ]]; then
-              echo "::error::mcode (mavis) exited with ${rc}. Log:" >&2
+              echo "::error::mmx (mavis) exited with ${rc}. Log:" >&2
               cat "${RESULT_FILE}.log" >&2
               exit $rc
             fi
