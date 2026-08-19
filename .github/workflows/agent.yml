@@ -34,7 +34,7 @@ jobs:
       # status_field_name: 'Status'
       # in_progress_status: 'In Progress'
       # in_review_status: 'In Review'
-      # base_ref: 'main'
+      base_ref: 'master'
       # timeout_minutes: 20
       # agent_extra_args: '--model mavis-3'
     secrets:
