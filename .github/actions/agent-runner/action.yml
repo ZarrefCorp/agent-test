@@ -160,19 +160,26 @@ runs:
         workdir="${WORKDIR:-${GITHUB_WORKSPACE}}"
         cd "${workdir}"
 
+        # We always write the prompt and result files to RUNNER_TEMP
+        # rather than the workdir. RUNNER_TEMP is a stable per-job temp
+        # directory that survives across composite action steps; using
+        # it avoids path/working-dir drift between the prep and run
+        # steps when the run step also re-chdirs into `workdir`.
+        prompt_path="${RUNNER_TEMP}/agent-prompt.md"
+        result_path="${RUNNER_TEMP}/agent-result.json"
+
         # Pick the prompt source
         if [[ -n "${PROMPT}" ]]; then
-          echo "${PROMPT}" > .agent-prompt.md
+          printf '%s' "${PROMPT}" > "${prompt_path}"
         elif [[ -n "${PROMPT_FILE}" && -f "${PROMPT_FILE}" ]]; then
-          cp "${PROMPT_FILE}" .agent-prompt.md
+          cp "${PROMPT_FILE}" "${prompt_path}"
         else
           echo "::error::agent-runner: neither prompt nor prompt_file provided" >&2
           exit 1
         fi
 
-        result_file="${RESULT_FILE:-${workdir}/agent-result.json}"
-        echo "result_file=${result_file}" >> "${GITHUB_OUTPUT}"
-        echo "prompt_file=${workdir}/.agent-prompt.md" >> "${GITHUB_OUTPUT}"
+        echo "result_file=${result_path}" >> "${GITHUB_OUTPUT}"
+        echo "prompt_file=${prompt_path}" >> "${GITHUB_OUTPUT}"
 
     - name: Run agent
       id: run
@@ -180,13 +187,13 @@ runs:
       env:
         AGENT: ${{ inputs.agent }}
         AGENT_CLI: ${{ inputs.agent_cli }}
-        # PROMPT_FILE / RESULT_FILE paths are computed from GITHUB_WORKSPACE
-        # rather than reading `steps.prep.outputs.*` because the prep step
-        # writes to GITHUB_OUTPUT but composite action step outputs are
-        # not reliably propagated to later steps' env: blocks when
-        # the value contains a path interpolation.
-        PROMPT_FILE: ${{ github.workspace }}/.agent-prompt.md
-        RESULT_FILE: ${{ github.workspace }}/agent-result.json
+        # PROMPT_FILE / RESULT_FILE are read from step outputs (the
+        # prep step writes to RUNNER_TEMP/agent-prompt.md and exports
+        # both paths via GITHUB_OUTPUT). Reading the paths from the
+        # step outputs — rather than recomputing them — is the only
+        # way to guarantee both steps see the same absolute path.
+        PROMPT_FILE: ${{ steps.prep.outputs.prompt_file }}
+        RESULT_FILE: ${{ steps.prep.outputs.result_file }}
         EXTRA_ARGS: ${{ inputs.extra_args }}
         WORKDIR: ${{ inputs.working_directory }}
         AGENT_TOKEN: ${{ inputs.agent_token }}
@@ -262,15 +269,8 @@ runs:
             # so the prompt is supplied as an argument, not requested
             # from the user.
             set +e
-            # OpenCode accepts the prompt as positional args. Reading
-            # the file into a variable first lets us both pipe it on
-            # the command line AND emit it as a log line for debugging
-            # when the agent fails to receive it.
-            prompt_contents="$(cat "${PROMPT_FILE}" 2>/dev/null || true)"
-            echo "[DEBUG] opencode prompt length=${#prompt_contents}" >&2
-            echo "[DEBUG] opencode PROMPT_FILE=${PROMPT_FILE}" >&2
             "${cli}" run \
-              ${prompt_contents:+"${prompt_contents}"} \
+              "$(cat "${PROMPT_FILE}")" \
               ${EXTRA_ARGS} \
               > "${RESULT_FILE}.log" 2>&1
             rc=$?
