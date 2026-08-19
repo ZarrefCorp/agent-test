@@ -126,9 +126,16 @@ jobs:
         id: get
         env:
           EVENT_NAME: ${{ github.event_name }}
-          EVENT_PAYLOAD_PATH: ${{ github.event_path }}
           LABEL_NAME: ${{ github.event.label.name }}
           TRIGGER_LABEL: ${{ inputs.agent_trigger_label }}
+          # Read the issue number/title straight from the github.event context.
+          # We previously read them from the payload file via `jq
+          # .issue.number "${EVENT_PAYLOAD_PATH}"`, but when this workflow is
+          # called via `uses:` from a consumer repo, ${{ github.event_path }}
+          # arrives empty in the env, so jq fails with "Could not open file".
+          # The context fields are populated correctly in the same scenario.
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
         run: |
           set -euo pipefail
           issue_number=""
@@ -139,8 +146,8 @@ jobs:
               echo "Label ${LABEL_NAME} does not match ${TRIGGER_LABEL}; skipping."
               exit 0
             fi
-            issue_number="$(jq -r '.issue.number' "${EVENT_PAYLOAD_PATH}")"
-            issue_title="$(jq -r '.issue.title' "${EVENT_PAYLOAD_PATH}")"
+            issue_number="${ISSUE_NUMBER}"
+            issue_title="${ISSUE_TITLE}"
           elif [[ "${EVENT_NAME}" == "workflow_dispatch" ]]; then
             issue_number="${{ inputs.issue_number }}"
           fi
@@ -225,6 +232,7 @@ jobs:
           extra_args: ${{ inputs.agent_extra_args }}
           timeout_minutes: ${{ inputs.timeout_minutes }}
           agent_token: ${{ secrets.agent_gh_token || secrets.default_github_token }}
+          api_key: ${{ secrets.agent_api_key }}
 
       - name: Move card to In Review
         if: always() && steps.agent.outputs.pr_url != ''

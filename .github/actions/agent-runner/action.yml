@@ -55,6 +55,12 @@ inputs:
       Token the agent should use for git push. Default: GITHUB_TOKEN.
     required: false
     default: ''
+  api_key:
+    description: >-
+      API key for the agent runtime (e.g. MAVIS_API_KEY, ANTHROPIC_API_KEY).
+      Optional for some runtimes.
+    required: false
+    default: ''
   result_file:
     description: >-
       File the agent should write its final JSON result to. Default:
@@ -105,7 +111,7 @@ runs:
       if: inputs.agent == 'mavis'
       shell: bash
       env:
-        MAVIS_API_KEY: ${{ secrets.MAVIS_API_KEY }}
+        MAVIS_API_KEY: ${{ inputs.api_key }}
       run: |
         set -euo pipefail
         npm install -g mavis || true
