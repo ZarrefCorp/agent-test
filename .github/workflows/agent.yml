@@ -30,10 +30,10 @@ jobs:
     with:
       agent: mavis
       project_title: 'Engineering Backlog'
+      agent_trigger_label: 'agent:ready'
       # status_field_name: 'Status'
       # in_progress_status: 'In Progress'
       # in_review_status: 'In Review'
-      # agent_trigger_label: 'agent:ready'
       # base_ref: 'main'
       # timeout_minutes: 20
       # agent_extra_args: '--model mavis-3'
